@@ -4,7 +4,7 @@
 #include <string>
 
 namespace NucDeEx{
-  const int bins=100;
+  const int bins=128;
   const int parity=2;
 
   const int num_particle=7;

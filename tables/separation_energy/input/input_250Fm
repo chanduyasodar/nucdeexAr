@@ -1,0 +1,6 @@
+projectile 0
+element 100
+mass 250
+energy energy
+bins 0
+ejectiles g n p a d t h

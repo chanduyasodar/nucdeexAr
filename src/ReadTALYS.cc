@@ -57,11 +57,13 @@ bool ReadTALYS::Read()
     // 1 -> decay mode
     // 2 -> discrete level mode
 
-  NucDeExNucleus* nuc;
+  NucDeExNucleus* nuc = NULL;
   int parity_array=0, parity_array_daughter=0;
   float pop_r[NucDeEx::bins], Ex_r[NucDeEx::bins];
-  int max_bin_r;
-  float pop_total_decay; // pop for specific mother -> daughter
+  int max_bin_r = 0;
+  int bin_mother = -1;
+  int daughter_id = -1;
+  float pop_total_decay = 0; // pop for specific mother -> daughter
   bool flag_first_population=1;
   while(_ifs->getline(buf,sizeof(buf))){
     std::string st = std::string(buf);
@@ -176,7 +178,7 @@ bool ReadTALYS::Read()
       }
       //line_population=0;
     }else{ // cannot find total population 
-      int bin_mother, parity_mother, parity_daughter, daughter_id;
+      int parity_mother, parity_daughter;
       int find_decay = st.find(keyword_decay->c_str());
       int find_total = st.find(keyword_total->c_str());
       if(find_decay == std::string::npos && flag_mode==0){
@@ -190,6 +192,11 @@ bool ReadTALYS::Read()
         if(std::istringstream(st) >> bin >> Ex >> pop >> pop_p >> pop_spin[0] >> pop_spin[1] >> pop_spin[2]
               >> pop_spin[3] >> pop_spin[4] >> pop_spin[5] >> pop_spin[6]
               >> pop_spin[7] >> pop_spin[8]){
+          if(bin<0 || bin>=NucDeEx::bins){
+            std::cerr << "ERROR: Population bin out of range: " << bin
+                << " (compiled NucDeEx::bins=" << NucDeEx::bins << ")" << std::endl;
+            return 0;
+          }
           // this is the first time we found it..
           // Usually it is negative parity.
           // the distribution is the same as positive parity
@@ -214,27 +221,54 @@ bool ReadTALYS::Read()
           return 0;
         }
         st = st.substr(find_bin_mother+keyword_bin_mother->length());
-        std::istringstream(st) >> bin_mother; // obtain mother's bin
+        if(!(std::istringstream(st) >> bin_mother)){ // obtain mother's bin
+          std::cerr << "ERROR: Cannot read mother bin from decay line: " << buf << std::endl;
+          return 0;
+        }
+        if(bin_mother<0 || bin_mother>=NucDeEx::bins){
+          std::cerr << "ERROR: Mother bin out of range: " << bin_mother
+              << " (compiled NucDeEx::bins=" << NucDeEx::bins << ")" << std::endl;
+          return 0;
+        }
 
         nuc->flag_decay_data[bin_mother]=1; // this nucleus have decay data!
 
         int find_parity_mother = st.find(keyword_parity_mother->c_str());
+        if(find_parity_mother == std::string::npos){
+          std::cerr << "ERROR: Cannot find mother parity in decay line: " << buf << std::endl;
+          return 0;
+        }
         st = st.substr(find_parity_mother+keyword_parity_mother->length());
-        std::istringstream(st) >> parity_mother;
+        if(!(std::istringstream(st) >> parity_mother)){
+          std::cerr << "ERROR: Cannot read mother parity from decay line: " << buf << std::endl;
+          return 0;
+        }
         if(parity_mother<0) parity_array=0;
         else parity_array=1;
 
         int find_parity_daughter = st.find(keyword_parity_daughter->c_str());
+        if(find_parity_daughter == std::string::npos){
+          std::cerr << "ERROR: Cannot find daughter parity in decay line: " << buf << std::endl;
+          return 0;
+        }
         st = st.substr(find_parity_daughter+keyword_parity_daughter->length());
-        std::istringstream(st) >> parity_daughter;
+        if(!(std::istringstream(st) >> parity_daughter)){
+          std::cerr << "ERROR: Cannot read daughter parity from decay line: " << buf << std::endl;
+          return 0;
+        }
         if(parity_daughter<0) parity_array_daughter=0;
         else parity_array_daughter=1;
 
+        daughter_id = -1;
         for(int i=0;i<NucDeEx::num_particle;i++){
           if(st.find(NucDeEx::particle_name[i].c_str())!=std::string::npos){
             daughter_id=i; // obtain daugher info
             break;
           }
+        }
+        if(daughter_id<0){
+          std::cerr << "ERROR: Cannot identify daughter particle in decay line: " << buf << std::endl;
+          return 0;
         }
       }else if(flag_mode==1 && find_total!=std::string::npos){ // find total info just after decay mode
         st = st.substr(find_total+keyword_total->length());
@@ -249,6 +283,15 @@ bool ReadTALYS::Read()
         if(std::istringstream(st) >> bin >> Ex >> pop_spin[0] >> pop_spin[1] >> pop_spin[2]
               >> pop_spin[3] >> pop_spin[4] >> pop_spin[5] >> pop_spin[6]
               >> pop_spin[7] >> pop_spin[8] >> pop_spin[9]){
+          if(bin_mother<0 || daughter_id<0){
+            std::cerr << "ERROR: Found decay population before valid decay header: " << buf << std::endl;
+            return 0;
+          }
+          if(bin<0 || bin>=NucDeEx::bins){
+            std::cerr << "ERROR: Daughter bin out of range: " << bin
+                << " (compiled NucDeEx::bins=" << NucDeEx::bins << ")" << std::endl;
+            return 0;
+          }
 
           // reject junk sentense
           int junk;

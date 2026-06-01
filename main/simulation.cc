@@ -73,6 +73,7 @@ int main(int argc, char* argv[]){
   if(flag_jpi){
     if(A==11) os << "12C/";
     else if(A==15) os << "16O/";
+    else if(A==40) os << "40/";
     else abort();
   }
   os << argv[1] << "_ldmodel" << ldmodel;
@@ -163,6 +164,7 @@ int main(int argc, char* argv[]){
     if(flag_jpi){
       if(A==11) os << "12C/";
       else if(A==15) os << "16O/";
+      else if(A==40) os << "40/";
       else abort();
     }
     os << "fig_" << argv[1] << "_ldmodel" << ldmodel;
@@ -409,6 +411,7 @@ int main(int argc, char* argv[]){
   if(flag_jpi){
     if(A==11) os << "12C/";
     else if(A==15) os << "16O/";
+    else if(A==40) os << "40/";
     else abort();
   }
   os << "fig_" << argv[1] << "_ldmodel" << ldmodel;

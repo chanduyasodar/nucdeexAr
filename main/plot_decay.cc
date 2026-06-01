@@ -3,6 +3,10 @@
 #include <sstream>
 #include <string>
 #include <iomanip> 
+#include <cerrno>
+#include <cstring>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "NucDeExConsts.hh"
 #include "NucDeExUtils.hh"
@@ -23,6 +27,52 @@
 const std::string decay_name[NucDeEx::num_particle] // for G4
   = {"IT","Neutron","Proton",
      "Deuteron","Triton","He3","Alpha"};
+
+static bool EnsureDirectory(const std::string& path)
+{
+  if(path.empty()) return true;
+
+  std::string partial;
+  for(size_t i=0;i<path.size();i++){
+    partial += path[i];
+    if(path[i]!='/' || partial.size()==1) continue;
+
+    if(mkdir(partial.c_str(),0755)!=0 && errno!=EEXIST){
+      std::cerr << "ERROR: Cannot create directory " << partial
+          << ": " << strerror(errno) << std::endl;
+      return false;
+    }
+  }
+
+  if(mkdir(path.c_str(),0755)!=0 && errno!=EEXIST){
+    std::cerr << "ERROR: Cannot create directory " << path
+        << ": " << strerror(errno) << std::endl;
+    return false;
+  }
+  return true;
+}
+
+static bool BuildFigureDir(std::ostringstream& os, const bool flag_jpi,
+    const int At, const char* target, const int ldmodel,
+    const bool parity_optmodall, std::string& fig_dir)
+{
+  os.str("");
+  os << "fig/";
+  if(flag_jpi){
+    if(At==11) os << "12C/";
+    else if(At==15) os << "16O/";
+    else if(At==40) os << "40K/";
+    else{
+      std::cerr << "ERROR: flag_jpi is enabled, but target A=" << At
+          << " is not supported for JPI figure output" << std::endl;
+      return false;
+    }
+  }
+  os << target << "_ldmodel" << ldmodel;
+  if(parity_optmodall) os << "_parity_optmodall";
+  fig_dir = os.str();
+  return EnsureDirectory(fig_dir);
+}
 
 int main(int argc, char* argv[]){
   if(argc!=5){
@@ -45,6 +95,10 @@ int main(int argc, char* argv[]){
     return 1;
   }
   NucDeExNucleus* nuc = nucleus_table->GetNucleusPtr(argv[1]);
+  if(!nuc){
+    std::cerr << "ERROR: Unknown target nucleus: " << argv[1] << std::endl;
+    return 1;
+  }
   const int Zt=nuc->Z;
   const int Nt=nuc->N;
   const int At=Zt+Nt;
@@ -54,7 +108,13 @@ int main(int argc, char* argv[]){
   if(flag_jpi){
     if(At==11) os << "12C";
     else if(At==15) os << "16O";
-    else abort();
+    else if(At==40) os << "40K";
+    else{
+      std::cerr << "ERROR: flag_jpi is enabled, but target " << argv[1]
+          << " has A=" << At << ". JPI output input paths are only defined"
+          << " for A=11, A=15, and A=40 in plot_decay.cc." << std::endl;
+      return 1;
+    }
   }
   os << "/output_" << argv[1] << "_ldmodel" << ldmodel;
   if(parity_optmodall) os << "_parity_optmodall";
@@ -80,6 +140,7 @@ int main(int argc, char* argv[]){
   if(flag_jpi){
     if(At==11) os << "12C";
     else if(At==15) os << "16O";
+    else if(At==40) os << "40K";
     else abort();
   }
   os << "/Br_" << argv[1] << "_ldmodel" << ldmodel;
@@ -134,6 +195,8 @@ int main(int argc, char* argv[]){
     }else{
       std::cout << "Population for " << nuc_target->name << " looks OK" << std::endl;
     }
+    std::cout << "Preparing plots for " << nuc_target->name
+        << " with " << nuc_target->Ex_bin[0] << " excitation bins" << std::endl;
     if(! (nuc_target->CheckEx())) {
       std::cerr << "ERROR: There was unexpected behaviour in Ex" << std::endl;
       return 0;
@@ -305,16 +368,11 @@ int main(int argc, char* argv[]){
       g_target_pop[par]->Draw("PLsame");
     }
     gPad->RedrawAxis();
+    std::string fig_dir;
+    if(!BuildFigureDir(os,flag_jpi,At,argv[1],ldmodel,parity_optmodall,fig_dir)) return 0;
     os.str("");
-    os << "fig/";
-    if(flag_jpi){
-      if(At==11) os << "12C/";
-      else if(At==15) os << "16O/";
-      else abort();
-    }
-    os << argv[1] << "_ldmodel" << ldmodel;
-    if(parity_optmodall) os << "_parity_optmodall";
-    os << "/fig_" << name.c_str() << "_pop.pdf";
+    os << fig_dir << "/fig_" << name.c_str() << "_pop.pdf";
+    std::cout << "Writing " << os.str() << std::endl;
     c_target_pop->Print(os.str().c_str());
     c_target_pop->Update();
     c_target_pop->Clear();
@@ -341,16 +399,10 @@ int main(int argc, char* argv[]){
     leg_target_br->Draw("same");
     gPad->RedrawAxis();
     //
+    if(!BuildFigureDir(os,flag_jpi,At,argv[1],ldmodel,parity_optmodall,fig_dir)) return 0;
     os.str("");
-    os << "fig/";
-    if(flag_jpi){
-      if(At==11) os << "12C/";
-      else if(At==15) os << "16O/";
-      else abort();
-    }
-    os << argv[1] << "_ldmodel" << ldmodel;
-    if(parity_optmodall) os << "_parity_optmodall";
-    os << "/fig_" << name.c_str() << "_br.pdf";
+    os << fig_dir << "/fig_" << name.c_str() << "_br.pdf";
+    std::cout << "Writing " << os.str() << std::endl;
     c_target_br->Print(os.str().c_str());
     c_target_br->Update();
     c_target_br->Clear();
@@ -358,17 +410,11 @@ int main(int argc, char* argv[]){
 
 
     TCanvas* c_target_br_ex = new TCanvas("c_target_br_ex","",0,0,1200,600);
+    if(!BuildFigureDir(os,flag_jpi,At,argv[1],ldmodel,parity_optmodall,fig_dir)) return 0;
     os.str("");
-    os << "fig/";
-    if(flag_jpi){
-      if(At==11) os << "12C/";
-      else if(At==15) os << "16O/";
-      else abort();
-    }
-    os << argv[1] << "_ldmodel" << ldmodel;
-    if(parity_optmodall) os << "_parity_optmodall";
-    os << "/fig_" << name.c_str() << "_br_Ex.pdf";
+    os << fig_dir << "/fig_" << name.c_str() << "_br_Ex.pdf";
     std::string pdfname= os.str();
+    std::cout << "Writing " << pdfname << std::endl;
     c_target_br_ex->Print( (pdfname+(std::string)"[").c_str() );
     c_target_br_ex->Update();
     c_target_br_ex->Clear();

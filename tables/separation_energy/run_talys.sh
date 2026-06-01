@@ -30,5 +30,6 @@ do
 		continue
 	fi
 	echo "Process: $TARGET"
-	talys < $INPUTFILE > $OUTPUTFILE
+	
+/home/bbehera/chandu/talys/talys/bin/talys < $INPUTFILE > $OUTPUTFILE
 done
