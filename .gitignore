@@ -1,0 +1,45 @@
+!.gitignore
+# Prefix
+old*
+bin/*
+obj/*
+lib/*
+sim_out_*
+log*
+/fig*
+/jpi*
+fig_2*
+/fig_jpi*
+/fig_neut*
+/fig_nuwro*
+/fig_genie*
+/fig_gibuu*
+fig_comparison*
+fig_sim_*
+fig_paper*
+
+
+# Suffix
+#*.root
+*.Linux
+*.o
+*.a
+*.so
+*.root
+#special file
+/output_nuwro*
+/output_genie*
+/output_neut*
+/output_gibuu*
+/output*
+/fig*
+/tables/separation_energy/output
+cs??????
+tr??????
+ecis.invin
+ecisinv.inp
+# for geant4
+#/CMakeLists.txt
+#/GNUmakefile
+#/sources.cmake
+/1

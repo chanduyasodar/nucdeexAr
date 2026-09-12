@@ -1,0 +1,25 @@
+projectile 0
+element 18
+mass 40
+energy energy
+
+bins 0
+ldmodel 2
+parity y
+optmodall y
+
+maxlevelstar 40
+maxlevelsbin g 40
+maxlevelsbin n 40
+maxlevelsbin p 19
+maxlevelsbin d 12
+maxlevelsbin t 40
+maxlevelsbin h 0
+maxlevelsbin a 23
+maxlevelsres 0
+ejectiles g n p a d t h
+
+outdiscrete y
+outpopulation y
+outdecay y
+outlevels y
